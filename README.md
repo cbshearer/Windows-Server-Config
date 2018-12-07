@@ -2,7 +2,7 @@
 This is a script I have been building and tweaking over several years.
 
 Install/set the following 
-  1) Powershell ISE
+  1) Install Powershell ISE
   2) Enable the Windows Update Service
   3) Disables Windows Audio Service
   4) Adjust visual performance setting for all users (HKLM key)
