@@ -5,7 +5,8 @@ Configure the following services
   1) Enable the Windows Update Service
   2) Stops print spooler service
   3) Disables Windows Audio Service
-  4) Install SNMP service  
+  4) Install SNMP service
+  5) Check for and disable Xbox Services
   
 Settings  
   1) Adjust visual performance setting for all users (HKLM key)
