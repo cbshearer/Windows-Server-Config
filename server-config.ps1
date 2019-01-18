@@ -129,7 +129,7 @@
     function disable-browserservice
         {
             Stop-Service -Name browser
-            Set-Service -Name browser -StartupType Disabled
+            Set-Service  -Name browser -StartupType Disabled
         }
 
 ## Function to enable Windows Update Service
