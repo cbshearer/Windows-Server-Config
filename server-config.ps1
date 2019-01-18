@@ -139,6 +139,25 @@
             Start-Service -Name wuauserv
         }
 
+## Function to disable XBox Live services if installed
+function disable-XboxServices
+{
+    $xbl1 = get-service XblAuthManager -ErrorAction SilentlyContinue
+    $xbl2 = get-service XblGameSave    -ErrorAction SilentlyContinue
+    
+    if ($xbl1) 
+        {
+            stop-service -Name XblAuthManager
+            set-service  -Name XblAuthManager -StartupType Disabled
+        }
+
+    if ($xbl2) 
+        {
+            stop-service -Name XblGameSave
+            set-service  -Name XblGameSave -StartupType Disabled
+        }
+}        
+
 ###############################
 #### Software installation ####
 ###############################
@@ -249,6 +268,12 @@ function Configure-settings
         enable-WindowsUpdateService
     write-host -ForegroundColor Green "Done starting and setting to Automatic the Windows Update service"
     write-host "===================="
+
+    ## Call function to stop and disable Xbox services
+write-host -ForegroundColor Green "Stopping and disabling Xbox services"
+        disable-XboxServices
+        write-host -ForegroundColor Green "Done stopping and disabling Xbox services"
+        write-host "===================="
     }
 
 ########################################
