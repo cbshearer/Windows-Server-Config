@@ -3,10 +3,11 @@ This is a script I have been building and tweaking over several years.
 
 Configure the following services
   1) Enable the Windows Update Service
-  2) Stops print spooler service
-  3) Disables Windows Audio Service
+  2) Stop and disable Print Spooler service
+  3) Stop and disable Windows Audio Service
   4) Install SNMP service
-  5) Check for and disable Xbox Services
+  5) Check for, stop and disable Xbox services
+  6) Stop and disable Computer Browser service
   
 Settings  
   1) Adjust visual performance setting for all users (HKLM key)
