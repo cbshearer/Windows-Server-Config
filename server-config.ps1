@@ -7,7 +7,7 @@
 ## Set the users or groups that will be added as local admins here
 ## DON'T FORGET COMMAS after all entries except the last.
 	$groups = ( 
-                "your.local\domain admins",
+                "your.local\Domain Admins",
 				"your.local\Server Admins"
               )
 
@@ -283,31 +283,31 @@ function Check-AppsAndSettings
     {
 # write-host "=== Application Installation Check ==="
 
-#Labtech
-$LTsvc = get-service LTservice
-$LTswd = get-service LTSvcMon
-$LTsvcMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='LTservice'"
-$LTswdMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='LTSvcMon'"
+# Labtech
+    $LTsvc = get-service LTservice
+    $LTswd = get-service LTSvcMon
+    $LTsvcMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='LTservice'"
+    $LTswdMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='LTSvcMon'"
 
 ## Existence / status checks
-If (!$LTsvc)
-     { write-host -f Red $LTsvc.Name "does not exist."}
-elseif ($LTsvc.status -eq "Running")
-     { write-host -f Green $LTsvc.displayname $LTsvc.status}
-else { write-host -f Red   $LTsvc.displayname " not running"}
+    If (!$LTsvc)
+        { write-host -f Red $LTsvc.Name "does not exist."}
+    elseif ($LTsvc.status -eq "Running")
+        { write-host -f Green $LTsvc.displayname $LTsvc.status}
+    else { write-host -f Red   $LTsvc.displayname " not running"}
 
-If (!$LTswd)
-     { write-host -f Red $LTswd.Name "does not exist."}
-elseif ($LTswd.Status -eq "Running")
-     { write-host -f Green $LTswd.displayname $LTswd.status}
-else { write-host -f Red   $LTswd.displayname " not running"}
+    If (!$LTswd)
+        { write-host -f Red $LTswd.Name "does not exist."}
+    elseif ($LTswd.Status -eq "Running")
+        { write-host -f Green $LTswd.displayname $LTswd.status}
+    else { write-host -f Red   $LTswd.displayname " not running"}
 
 ## Startup type checks
-If ($LTsvcMode.startmode)
-    {write-host -f Green "Labtech service start mode: " -NoNewline; write-host -f cyan $LTsvcMode.StartMode}
-If ($LTswdMode.startmode)
-    {write-host -f Green "Labtech service start mode: " -NoNewline; write-host -f cyan $LTswdMode.StartMode}
-write-host "===================="
+    If ($LTsvcMode.startmode)
+        {write-host -f Green "Labtech service start mode: " -NoNewline; write-host -f cyan $LTsvcMode.StartMode}
+    If ($LTswdMode.startmode)
+        {write-host -f Green "Labtech service start mode: " -NoNewline; write-host -f cyan $LTswdMode.StartMode}
+    write-host "===================="
 
 #####################################
 #### Service configuration Check ####
@@ -318,90 +318,121 @@ write-host "===================="
 ## If a startmode exists output will state the start mode
 
 write-host "=== Service Configuration Check ===="
+
 # SNMP Service
-$SNMPSvc = Get-Service snmp -ErrorAction SilentlyContinue
-$SNMPmode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='snmp'"
+    $SNMPSvc = Get-Service snmp -ErrorAction SilentlyContinue
+    $SNMPmode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='snmp'"
 
-If (!($SNMPSvc))
-    {write-host -ForegroundColor Red "SNMP service does not exist."}
-elseif ($SNMPSvc.status -eq 'Running')
-    {write-host -ForegroundColor Green "SNMP service is $SNMPSvc.status."}
-elseif ($SNMPSvc.status -ne 'Running')
-    {write-host -ForegroundColor Yellow "SNMP service not running."}
+    If (!($SNMPSvc))
+        {write-host -ForegroundColor Red "SNMP service does not exist."}
+    elseif ($SNMPSvc.status -eq 'Running')
+        {write-host -ForegroundColor Green "SNMP service is $SNMPSvc.status."}
+    elseif ($SNMPSvc.status -ne 'Running')
+        {write-host -ForegroundColor Yellow "SNMP service not running."}
 
-If ($SNMPmode.startmode)
-    {write-host -ForegroundColor Green "SNMP service start mode: " -nonewLine; write-host -f cyan $SNMPMode.startmode}
-write-host "===================="
+    If ($SNMPmode.startmode)
+        {write-host -ForegroundColor Green "SNMP service start mode: " -nonewLine; write-host -f cyan $SNMPMode.startmode}
+    write-host "===================="
 
 # Spooler Service
-$SpoolSVC = Get-Service spooler -ErrorAction SilentlyContinue
-$SpoolMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='spooler'"
+    $SpoolSVC = Get-Service spooler -ErrorAction SilentlyContinue
+    $SpoolMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='spooler'"
 
-If ($SpoolSVC.status -eq 'Stopped')
-    {write-host -ForegroundColor Green "Spooler service is not running."}
-If ($SpoolSVC.status -ne 'Stopped') 
-    {write-host -ForegroundColor Yellow "Spooler service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $SpoolSVC.status}
-If (!($SpoolSVC))
-    {write-host -ForegroundColor Green "Spooler service does not exist."}
-If ($SpoolMode.startmode)
-    {write-host -ForegroundColor Green "Spooler service start mode: " -NoNewLine; write-host -f Cyan $SpoolMode.startmode}
-write-host "===================="
+    If ($SpoolSVC.status -eq 'Stopped')
+        {write-host -ForegroundColor Green "Spooler service is not running."}
+    If ($SpoolSVC.status -ne 'Stopped') 
+        {write-host -ForegroundColor Yellow "Spooler service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $SpoolSVC.status}
+    If (!($SpoolSVC))
+        {write-host -ForegroundColor Green "Spooler service does not exist."}
+    If ($SpoolMode.startmode)
+        {write-host -ForegroundColor Green "Spooler service start mode: " -NoNewLine; write-host -f Cyan $SpoolMode.startmode}
+    write-host "===================="
 
 # Audio Service
-$AudioSVC = Get-Service AudioSRV -ErrorAction SilentlyContinue
-$AudioMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='AudioSRV'"
+    $AudioSVC = Get-Service AudioSRV -ErrorAction SilentlyContinue
+    $AudioMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='AudioSRV'"
 
-If ($AudioSVC.status -eq 'Stopped')
-    {write-host -ForegroundColor Green "Audio service is not running."}
-If ($AudioSVC.status -ne 'Stopped') 
-    {write-host -ForegroundColor Yellow "Audio service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $AudioSVC.status}
-If (!($AudioSVC))
-    {write-host -ForegroundColor Green "Audio service does not exist."}
-If ($AudioMode.startmode)
-    {write-host -ForegroundColor Green "Audio service start mode: " -NoNewLine; write-host -f Cyan $AudioMode.startmode}
-write-host "===================="
+    If ($AudioSVC.status -eq 'Stopped')
+        {write-host -ForegroundColor Green "Audio service is not running."}
+    If ($AudioSVC.status -ne 'Stopped') 
+        {write-host -ForegroundColor Yellow "Audio service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $AudioSVC.status}
+    If (!($AudioSVC))
+        {write-host -ForegroundColor Green "Audio service does not exist."}
+    If ($AudioMode.startmode)
+        {write-host -ForegroundColor Green "Audio service start mode: " -NoNewLine; write-host -f Cyan $AudioMode.startmode}
+    write-host "===================="
 
 # Computer Browser Service
-$BrowserSVC = Get-Service Browser -ErrorAction SilentlyContinue
-$BrowserMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='Browser'"
+    $BrowserSVC = Get-Service Browser -ErrorAction SilentlyContinue
+    $BrowserMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='Browser'"
 
-If ($BrowserSVC.status -eq 'Stopped')
-    {write-host -ForegroundColor Green "Browser service is not running."}
-If ($BrowserSVC.status -ne 'Stopped') 
-    {write-host -ForegroundColor Yellow "Browser service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $BrowserSVC.status}
-If (!($BrowserSVC))
-    {write-host -ForegroundColor Green "Browser service does not exist."}
-If ($BrowserMode.startmode)
-    {write-host -ForegroundColor Green "Browser service start mode: " -NoNewLine; write-host -f Cyan $BrowserMode.startmode}
-write-host "===================="
+    If ($BrowserSVC.status -eq 'Stopped')
+        {write-host -ForegroundColor Green "Browser service is not running."}
+    If ($BrowserSVC.status -ne 'Stopped') 
+        {write-host -ForegroundColor Yellow "Browser service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $BrowserSVC.status}
+    If (!($BrowserSVC))
+        {write-host -ForegroundColor Green "Browser service does not exist."}
+    If ($BrowserMode.startmode)
+        {write-host -ForegroundColor Green "Browser service start mode: " -NoNewLine; write-host -f Cyan $BrowserMode.startmode}
+    write-host "===================="
+
+# Xbox Services
+# Xbox Auth
+    $xbSVC1 = Get-Service XblAuthManager -ErrorAction SilentlyContinue
+    $xbSVC1mode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='XblAuthManager'"
+
+    If ($xbSVC1.status -eq 'Stopped')
+        {write-host -ForegroundColor Green "XblAuthManager service is not running."}
+    If ($xbSVC1.status -ne 'Stopped') 
+        {write-host -ForegroundColor Yellow "XblAuthManager service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $xbSVC1.status}
+    If (!($xbSVC1))
+        {write-host -ForegroundColor Green "XblAuthManager service does not exist."}
+    If ($xbSVC1mode.startmode)
+        {write-host -ForegroundColor Green "XblAuthManager service start mode: " -NoNewLine; write-host -f Cyan $xbSVC1.startmode}
+    write-host "===================="
+
+# Xbox Game
+    $xbSVC2 = Get-Service XblGameSave -ErrorAction SilentlyContinue
+    $xbSVC2mode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='XblGameSave'"
+
+    If ($xbSVC2.status -eq 'Stopped')
+        {write-host -ForegroundColor Green "XblGameSave service is not running."}
+    If ($xbSVC2.status -ne 'Stopped') 
+        {write-host -ForegroundColor Yellow "XblGameSave service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $xbSVC2.status}
+    If (!($xbSVC2))
+        {write-host -ForegroundColor Green "XblGameSave service does not exist."}
+    If ($xbSVC2mode.startmode)
+        {write-host -ForegroundColor Green "XblGameSave service start mode: " -NoNewLine; write-host -f Cyan $xbSVC2.startmode}
+    write-host "===================="
+
 
 # Windows Update Service
-$WUAUSVC = Get-Service wuauserv -ErrorAction SilentlyContinue
-$WUAUMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='wuauserv'"
+    $WUAUSVC = Get-Service wuauserv -ErrorAction SilentlyContinue
+    $WUAUMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='wuauserv'"
 
-If ($WUAUSVC.status -eq 'running')
-    {write-host -ForegroundColor Green "Windows Update service is running."}
-If ($WUAUSVC.status -ne 'running') 
-    {write-host -ForegroundColor Yellow "Windows Update service is not running. Service status is: " -NoNewLine; write-host -f cyan $BrowserSVC.status}
-If (!(!($WUAUSVC)))
-    {write-host -ForegroundColor Green "Windows Update service exists."}
-If ($WUAUMode.startmode)
-    {write-host -ForegroundColor Green "Windows Update service start mode: " -NoNewLine; write-host -f Cyan $WUAUMode.startmode}
-write-host "===================="
-    }
+    If ($WUAUSVC.status -eq 'running')
+        {write-host -ForegroundColor Green "Windows Update service is running."}
+    If ($WUAUSVC.status -ne 'running') 
+        {write-host -ForegroundColor Yellow "Windows Update service is not running. Service status is: " -NoNewLine; write-host -f cyan $BrowserSVC.status}
+    If (!(!($WUAUSVC)))
+        {write-host -ForegroundColor Green "Windows Update service exists."}
+    If ($WUAUMode.startmode)
+        {write-host -ForegroundColor Green "Windows Update service start mode: " -NoNewLine; write-host -f Cyan $WUAUMode.startmode}
+    write-host "===================="
+        }
 
 # Shutdown tracker
-$EvtTrackerKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Reliability"
-$ReasonUICode = Get-ItemProperty -Path $EvtTrackerKey
+    $EvtTrackerKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Reliability"
+    $ReasonUICode = Get-ItemProperty -Path $EvtTrackerKey
 
-If ($ReasonUICode.ShutdownReasonUI -eq 0)
-    {write-host -ForegroundColor Green "Event Tracker Disabled"}
-If ($ReasonUICode.ShutdownReasonUI -ne 0 -or (!($ReasonUICode)))
-    {write-host -f Red "Shutdown tracker not disabled"}
+    If ($ReasonUICode.ShutdownReasonUI -eq 0)
+        {write-host -ForegroundColor Green "Event Tracker Disabled"}
+    If ($ReasonUICode.ShutdownReasonUI -ne 0 -or (!($ReasonUICode)))
+        {write-host -f Red "Shutdown tracker not disabled"}
 
 function byebye
     {
-        cls
+        Clear-Host
         write-host "Have a nice day.`
         "
         exit
@@ -417,7 +448,7 @@ function byebye
 ## after the execution, there is a selection to go to main menu, run again or exit
 
 function Main-Menu {
-cls
+Clear-Host
 [int]$menuChoice = 0
 while ( $menuChoice -lt 1 -or $menuChoice -gt 4 )
     {
