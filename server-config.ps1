@@ -176,7 +176,7 @@ function Install-StandardSoftware
 #######################            
 #### Run Functions ####
 #######################
-function Configure-settings
+function Invoke-Settings
     {
     write-host "=== Settings and Services ==="
 ## Call  function to adjust visual effects for best performance
@@ -279,7 +279,7 @@ write-host -ForegroundColor Green "Stopping and disabling Xbox services"
 ########################################
 #### Application installation check ####
 ########################################
-function Check-AppsAndSettings
+function Confirm-AppsAndSettings
     {
 # write-host "=== Application Installation Check ==="
 
@@ -433,8 +433,7 @@ write-host "=== Service Configuration Check ===="
 function byebye
     {
         Clear-Host
-        write-host "Have a nice day.`
-        "
+        write-host "Have a nice day." `n
         exit
     }
 
@@ -447,7 +446,7 @@ function byebye
 ## if they confirm, then the selected function is executed
 ## after the execution, there is a selection to go to main menu, run again or exit
 
-function Main-Menu {
+function Invoke-Menu {
 Clear-Host
 [int]$menuChoice = 0
 while ( $menuChoice -lt 1 -or $menuChoice -gt 4 )
@@ -485,13 +484,13 @@ Switch( $menuChoice )
                 $anykey = read-host "Selection"
                 Switch ($anykey)
                     {
-                    '1' {main-menu}
+                    '1' {Invoke-Menu}
                     '2' {Install-StandardSoftware
-                         main-menu}
+                         Invoke-Menu}
                     '3' {byebye}
-                    default {main-menu}} #this was the last line of the sub-menu after task completed
+                    default {Invoke-Menu}}
                     }
-            default {main-menu}
+            default {Invoke-Menu}
             }
         }
     2{
@@ -520,7 +519,7 @@ Switch( $menuChoice )
         $value = read-host "Do you want to continue? (Y/N)"
         Switch ($value)
             {
-            'Y' {Configure-settings
+            'Y' {Invoke-Settings
                     write-host -ForegroundColor Green "System setting configuration complete"
                     write-host "     1. Return to Main Menu"
                     write-host "     2. Run again"
@@ -528,13 +527,13 @@ Switch( $menuChoice )
                     $anykey = read-host "Selection"
                     Switch ($anykey)
                         {
-                        '1' {main-menu}
-                        '2' {Configure-settings
-                             Main-Menu}
+                        '1' {Invoke-Menu}
+                        '2' {Invoke-Settings
+                             Invoke-Menu}
                         '3' {byebye}
-                        default {main-menu}} #this was the last line of the sub-menu after task completed
+                        default {Invoke-Menu}} #this was the last line of the sub-menu after task completed
                         }
-            default {main-menu}
+            default {Invoke-Menu}
             }
         }
 
@@ -554,7 +553,7 @@ Switch( $menuChoice )
         $value = read-host "Do you want to continue? (Y/N)"
         Switch ($value)
             {
-            'Y' {Check-AppsAndSettings
+            'Y' {Confirm-AppsAndSettings
                     #start of sub-menu after task is completed
                     write-host -ForegroundColor Green "Application and setting check complete"
                     write-host "     1. Return to Main Menu"
@@ -563,14 +562,14 @@ Switch( $menuChoice )
                     $anykey = read-host "Selection"
                     Switch ($anykey)
                     {
-                    '1' {main-menu}
-                    '2' {Check-AppsAndSettings
-                         Main-Menu}
+                    '1' {Invoke-Menu}
+                    '2' {Confirm-AppsAndSettings
+                         Invoke-Menu}
                     '3' {byebye}
-                    default {main-menu}
+                    default {Invoke-Menu}
                 } #this was the last line of the sub-menu after task completed
             }
-              default {main-menu}
+              default {Invoke-Menu}
         }
     }
 
@@ -580,4 +579,4 @@ Switch( $menuChoice )
             }
         } 
     }
-Main-Menu
+Invoke-Menu
