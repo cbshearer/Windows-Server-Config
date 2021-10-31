@@ -413,10 +413,10 @@ function Invoke-Settings
     write-host -f green "Done disabling NetBIOS and WINS"
     write-host "===================="
 
-## Call function to restrict anon enumeration
-    write-host -ForegroundColor Green "Disabling SManon enumeration"
+## Call function to restrict anonymous enumeration
+    write-host -ForegroundColor Green "Disabling anonymous enumeration"
         enable-restrictAnonEnum
-    write-host -f green "Done disabling anon enumeration"
+    write-host -f green "Done disabling anonymous enumeration"
     write-host "===================="
 
 ## Call function to disable IPv6
