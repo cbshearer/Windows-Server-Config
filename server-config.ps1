@@ -1,5 +1,5 @@
-## Windows Server 2008 R2 Build Checklist
-## Chris Shearer October 2015 - December 2018
+## Windows Server Build Checklist
+## Chris Shearer October 2015 - October 2021
 
 ## replace 'your.local' with your AD domain.
 
@@ -25,11 +25,28 @@
 			catch { New-ItemProperty -Path $path -Name 'VisualFXSetting' -Value 2 -PropertyType 'DWORD'}
 		}                    
 
-## Function to install SNMP Service Server OS only
+## Function to install SNMP Service Server OS only, also sets allowed SNMP servers and community string (insert your values)
     function Install-SNMPService
         {
             Import-Module ServerManager
             Get-WindowsFeature -name *SNMP* | Add-WindowsFeature -includeallsubfeature
+
+            write-host -f Cyan "Configuring permitted SNMP managers"
+            ## set allowed snmp access
+                $mKey = "hklm:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\PermittedManagers"
+
+                if (!$mkey -or !$mkey.1 -or !$mkey.2 -or ($mkey.2 -ne '10.1.1.11') -or ($mkey.3 -ne '10.1.1.12') -or ($mkey.4 -ne '10.1.1.13'))
+                    {
+                        New-ItemProperty -path $mkey -name 1 -value 'localhost' -Force | Out-Null
+                        New-ItemProperty -path $mkey -name 2 -value '10.1.1.11' -Force | Out-Null
+                        New-ItemProperty -path $mkey -name 3 -value '10.1.1.12' -Force | Out-Null
+                        New-ItemProperty -path $mkey -name 4 -value '10.1.1.13' -Force | Out-Null
+                    }
+
+            ## set allowed snmp communities
+                write-host -f Cyan "Configuring permitted SNMP community"
+                $cKey = "hklm:\SYSTEM\CurrentControlSet\Services\SNMP\Parameters\ValidCommunities"
+                if (!$cKey -or ($cKey.AAAAAAAAAAAAAAA -ne '4')) {New-ItemProperty -path $cKey -name "AAAAAAAAAAAAAAA" -value 4 -Force | Out-Null}
         }
 
 ## Function to enable RDP and require Network Level Authentication
@@ -125,12 +142,92 @@
 			write-host "2" }
         }
 
-## Function to disable Windows Computer Browser Service
+## Function to disable Windows Computer Browser Service and WPAD service
     function disable-browserservice
         {
             Stop-Service -Name browser
             Set-Service  -Name browser -StartupType Disabled
         }
+
+## Function to disable WPAD service (requires a reboot)
+    function disable-wpadService
+        {
+            ## REBOOT NECESSARY to complete disabling WPAD
+            write-host "Disabling WPAD: 3 is enabled, 4 is disabled "
+            if ((Get-ItemProperty -path "HKLM:\\SYSTEM\CurrentControlSet\Services\WinHttpAutoProxySvc" -name Start).start -ne 4)
+                {Set-ItemProperty -path "HKLM:\\SYSTEM\CurrentControlSet\Services\WinHttpAutoProxySvc" -name Start -value 4
+                Write-Host "WPAD has been disabled."}
+            else {Write-Host "WPAD was already disabled."}
+        }
+
+## Function to disable side-channel vulnerabilities
+    function disable-sideChanVulns
+        {
+            ## https://support.microsoft.com/en-us/topic/windows-server-guidance-to-protect-against-speculative-execution-side-channel-vulnerabilities-2f965763-00e2-8f98-b632-0d96f30c8c8e
+                Set-ItemProperty -Path "HKLM:\\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -name FeatureSettingsOverride -Value 0
+                Set-ItemProperty -Path "HKLM:\\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management" -name FeatureSettingsOverrideMask -Value 3
+        }
+
+## Function to disable LMHash
+function set-lmhash
+{
+    $lsa = $null
+    $lsa = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\lsa\" -ErrorAction SilentlyContinue
+
+    if (!($lsa.nolmhash) -or ($lsa.nolmhash -ne 1)) 
+        {
+            New-ItemProperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\LSA" -name 'NoLMHash' -value '1' -PropertyType 'DWord' -Force | Out-Null
+            write-host "lmhash 1"
+        } 
+    else {write-host "lmhash 1" -f green}
+
+    if (!($lsa.LMCompatibilityLevel) -or ($lsa.LMCompatibilityLevel -ne 5)) 
+        {
+            New-ItemProperty -path "HKLM:\SYSTEM\CurrentControlSet\Control\LSA" -name 'LMCompatibilityLevel' -value '5' -PropertyType 'DWord' -Force | Out-Null
+            write-host "lmcompat 5"
+        } 
+    else {write-host "lmcompat 5" -f green}
+}
+
+## Function to set reg key for Microsoft CVE-2017-8529
+Function set-cve20178529
+{
+    $disclosureFix = $null
+    $disclosureFix = Get-ItemProperty "HKLM:\Software\Microsoft\Internet Explorer\Main\FeatureControl\" -ErrorAction SilentlyContinue
+
+    if (!($disclosureFix.FEATURE_ENABLE_PRINT_INFO_DISCLOSURE_FIX) -or ($disclosureFix.FEATURE_ENABLE_PRINT_INFO_DISCLOSURE_FIX -ne 1))
+        {
+            New-ItemProperty -path "HKLM:\Software\Microsoft\Internet Explorer\Main\FeatureControl\" -name 'FEATURE_ENABLE_PRINT_INFO_DISCLOSURE_FIX' -value '1' -PropertyType 'DWord' -force | Out-null
+            write-host "FEATURE_ENABLE_PRINT_INFO_DISCLOSURE_FIX: " -NoNewline; write-host -f green "set"
+        }
+    else {write-host "FEATURE_ENABLE_PRINT_INFO_DISCLOSURE_FIX: " -NoNewline; write-host -f green "already correct"}    
+}
+
+## Function to disable smbv1
+function Disable-SMBv1
+{
+    $SMBconfig = Get-SmbServerConfiguration | Select-Object EnableSMB1Protocol,RequireSecuritySignature
+
+    #if smb1 is on then disable it
+    if ($SMBconfig.enablesmb1protocol -eq $true)
+    {
+        write-host "SMBv1 State: " -nonewline; write-host -f red $SMBconfig.enablesmb1protocol
+        Set-SmbServerConfiguration -EnableSMB1Protocol $false -force
+        $NewSMBv1status = Get-SmbServerConfiguration | Select-Object EnableSMB1Protocol
+        write-host "New SMBv1 State: " $newSMBv1status.enablesmb1protocol
+    }
+    else { write-host "SMBv1 State: " -nonewline; write-host -f green $SMBconfig.enablesmb1protocol }
+
+    Write-Host "SMB Signing Status: "  (Get-SmbServerConfiguration).RequireSecuritySignature
+
+    # if signature is not required, then require it
+    if ( $SMBconfig.RequireSecuritySignature -eq $false)
+    {
+        Write-Host "Forcing SMB Signing..."
+        set-SmbServerConfiguration -RequireSecuritySignature $TRUE -force
+    }
+    Write-Host "SMB Signing Status: "  $SMBconfig.RequireSecuritySignature
+}
 
 ## Function to enable Windows Update Service
     function enable-WindowsUpdateService
@@ -138,6 +235,29 @@
             Set-Service   -Name wuauserv -StartupType automatic
             Start-Service -Name wuauserv
         }
+
+## Function to disable anonymous access 
+    function enable-restrictAnonEnum
+        {
+            set-ItemProperty "hklm:\SYSTEM\CurrentControlSet\Control\Lsa" -name everyoneincludesanonymous 1
+            set-ItemProperty "hklm:\SYSTEM\CurrentControlSet\Control\Lsa" -name restrictAnonymous 0 
+            set-ItemProperty "hklm:\SYSTEM\CurrentControlSet\Control\Lsa" -name restrictAnonymousSAM 0
+        }
+
+## Function to disable IPV6
+    function disable-ipv6 {Disable-NetAdapterBinding -name "*" -ComponentID ms_tcpip6}
+
+## Function to Disable NetBIOS / WINS
+    function Disable-NetBIOSWins
+        {
+        $NetBios = Get-WmiObject -Class Win32_NetworkAdapterConfiguration
+        foreach ($net in $NETBios)
+            {   
+                $NetBios.setWINSServer("$Null","$Null") | Out-Null
+                $NetBios.SetTcpipNetbios("2") | Out-Null
+            }
+        }
+
 
 ## Function to disable XBox Live services if installed
 function disable-XboxServices
@@ -257,6 +377,54 @@ function Invoke-Settings
     write-host -ForegroundColor Green "Done setting registry to disale the shutdown event tracker"
     write-host "===================="
 
+## Call function to disable the WPAD service
+    Write-host -ForegroundColor Green "Setting registry to disable the WPAD service"
+        disable-wpadService
+    write-host -ForegroundColor Green "Done setting registry to disable the WPAD service"
+    write-host "===================="
+
+## Call function to disable sidechannel vulns
+    Write-host -ForegroundColor Green "Setting registry to disable sidechannel vulns"
+        disable-sideChanVulns
+    write-host -ForegroundColor Green "Done setting registry to disable sidechannel vulns"
+    write-host "===================="
+
+## Call function to set LM Hash compatibility
+    Write-host -ForegroundColor Green "Setting registry to set LM Hash compatibility"
+        set-lmhash
+    write-host -ForegroundColor Green "Done setting registry to set LM Hash compatibility"
+    write-host "===================="
+
+## Call function to set CVE-2017-8529
+    Write-host -ForegroundColor Green "Setting registry to mitigate CVE-2017-8529"
+        set-cve20178529
+    write-host -ForegroundColor Green "Done setting registry to mitigate CVE-2017-8529"
+    write-host "===================="
+
+## Call function to disable SMBv1
+    write-host -ForegroundColor Green "Disabling SMBv1 and requiring SMB signatures"
+        Disable-SMBv1
+    write-host -f green "Done disabling SMBv1 and requiring SMB signatures"
+    write-host "===================="
+
+## Call function to disable NetBIOS and WINS
+    write-host -ForegroundColor Green "Disabling NetBIOS and WINS"
+        Disable-NetBIOSWins
+    write-host -f green "Done disabling NetBIOS and WINS"
+    write-host "===================="
+
+## Call function to restrict anon enumeration
+    write-host -ForegroundColor Green "Disabling SManon enumeration"
+        enable-restrictAnonEnum
+    write-host -f green "Done disabling anon enumeration"
+    write-host "===================="
+
+## Call function to disable IPv6
+    write-host -ForegroundColor Green "Disabling IPv6"
+        disable-ipv6
+    write-host -f green "Done disabling IPv6"
+    write-host "===================="
+
 ## Call function to stop and disable Computer browser service
     write-host -ForegroundColor Green "Stopping and disabling the Windows Computer Browser service"
         Disable-BrowserService
@@ -319,107 +487,59 @@ function Confirm-AppsAndSettings
 
 write-host "=== Service Configuration Check ===="
 
-# SNMP Service
-    $SNMPSvc = Get-Service snmp -ErrorAction SilentlyContinue
-    $SNMPmode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='snmp'"
 
-    If (!($SNMPSvc))
-        {write-host -ForegroundColor Red "SNMP service does not exist."}
-    elseif ($SNMPSvc.status -eq 'Running')
-        {write-host -ForegroundColor Green "SNMP service is $SNMPSvc.status."}
-    elseif ($SNMPSvc.status -ne 'Running')
-        {write-host -ForegroundColor Yellow "SNMP service not running."}
+## services we want to be running
+$servicesR = @("snmp","wuauserv")
 
-    If ($SNMPmode.startmode)
-        {write-host -ForegroundColor Green "SNMP service start mode: " -nonewLine; write-host -f cyan $SNMPMode.startmode}
+## services we want to be running
+foreach ($serviceR in $servicesR)
+{
+    $serviceProperties = get-service $servicer -ErrorAction SilentlyContinue
+    $serviceMode = get-WmiObject -class Win32_Service -property StartMode -filter "name='$servicer'"
+
+    if ($serviceProperties)
+    {
+        ## make sure the service is running
+            if ($serviceProperties.status -eq 'Running') {write-host -f green $serviceProperties.displayname -NoNewline; write-host " service is running."}
+            else {write-host -f Yellow $serviceProperties.DisplayName -nonewline; write-host " service is not running. Service status is: " -NoNewline; write-host -f cyan $serviceProperties.status}
+
+        ## make sure the service  is set to autorun
+            if ($serviceMode.startmode -eq 'Auto') {write-host -f green $serviceProperties.displayname -NoNewline; write-host " startup type:" $serviceMode.startmode}
+            else {write-host -f red $serviceProperties.displayname -NoNewline; write-host " startup type:" $serviceMode.startmode}
+    
+    }
+
+    else {write-host -f Red $serviceR -NoNewline; write-host " service does not exist"}
+
     write-host "===================="
+}
 
-# Spooler Service
-    $SpoolSVC = Get-Service spooler -ErrorAction SilentlyContinue
-    $SpoolMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='spooler'"
+## services we want stopped
+$servicesS = @("spooler","AudioSRV","browser","WinHttpAutoProxySvc","XblGameSave","XblAuthManager")
 
-    If ($SpoolSVC.status -eq 'Stopped')
-        {write-host -ForegroundColor Green "Spooler service is not running."}
-    If ($SpoolSVC.status -ne 'Stopped') 
-        {write-host -ForegroundColor Yellow "Spooler service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $SpoolSVC.status}
-    If (!($SpoolSVC))
-        {write-host -ForegroundColor Green "Spooler service does not exist."}
-    If ($SpoolMode.startmode)
-        {write-host -ForegroundColor Green "Spooler service start mode: " -NoNewLine; write-host -f Cyan $SpoolMode.startmode}
+## services we want stopped
+foreach ($serviceS in $servicesS)
+{
+    $serviceProperties = get-service $serviceS -ErrorAction SilentlyContinue
+    $serviceMode = get-WmiObject -class Win32_Service -property StartMode -filter "name='$serviceS'"
+    
+    if ($serviceProperties) 
+    {
+        ## make sure services are stopped
+            if ($serviceProperties.status -eq 'Stopped') {write-host -f green $serviceProperties.DisplayName -NoNewline; write-host " service is stopped"}
+            else {write-host -f Yellow $serviceProperties.DisplayName -nonewline; write-host " service is running. Service status is: " -NoNewline; write-host -f cyan $serviceProperties.status}
+
+        ## make sure the service isn't set to autorun
+            if ($serviceMode.startmode) {write-host -f green $serviceProperties.displayname -NoNewline; write-host " startup type:" $serviceMode.startmode}
+            else {write-host -f red $serviceProperties.displayname -NoNewline; write-host " startup type:" $serviceMode.startmode}
+    }
+    
+    else {write-host -f Red $serviceR -NoNewline; write-host " service does not exist"}
+    
     write-host "===================="
+}
+    
 
-# Audio Service
-    $AudioSVC = Get-Service AudioSRV -ErrorAction SilentlyContinue
-    $AudioMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='AudioSRV'"
-
-    If ($AudioSVC.status -eq 'Stopped')
-        {write-host -ForegroundColor Green "Audio service is not running."}
-    If ($AudioSVC.status -ne 'Stopped') 
-        {write-host -ForegroundColor Yellow "Audio service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $AudioSVC.status}
-    If (!($AudioSVC))
-        {write-host -ForegroundColor Green "Audio service does not exist."}
-    If ($AudioMode.startmode)
-        {write-host -ForegroundColor Green "Audio service start mode: " -NoNewLine; write-host -f Cyan $AudioMode.startmode}
-    write-host "===================="
-
-# Computer Browser Service
-    $BrowserSVC = Get-Service Browser -ErrorAction SilentlyContinue
-    $BrowserMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='Browser'"
-
-    If ($BrowserSVC.status -eq 'Stopped')
-        {write-host -ForegroundColor Green "Browser service is not running."}
-    If ($BrowserSVC.status -ne 'Stopped') 
-        {write-host -ForegroundColor Yellow "Browser service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $BrowserSVC.status}
-    If (!($BrowserSVC))
-        {write-host -ForegroundColor Green "Browser service does not exist."}
-    If ($BrowserMode.startmode)
-        {write-host -ForegroundColor Green "Browser service start mode: " -NoNewLine; write-host -f Cyan $BrowserMode.startmode}
-    write-host "===================="
-
-# Xbox Services
-# Xbox Auth
-    $xbSVC1 = Get-Service XblAuthManager -ErrorAction SilentlyContinue
-    $xbSVC1mode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='XblAuthManager'"
-
-    If ($xbSVC1.status -eq 'Stopped')
-        {write-host -ForegroundColor Green "XblAuthManager service is not running."}
-    If ($xbSVC1.status -ne 'Stopped') 
-        {write-host -ForegroundColor Yellow "XblAuthManager service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $xbSVC1.status}
-    If (!($xbSVC1))
-        {write-host -ForegroundColor Green "XblAuthManager service does not exist."}
-    If ($xbSVC1mode.startmode)
-        {write-host -ForegroundColor Green "XblAuthManager service start mode: " -NoNewLine; write-host -f Cyan $xbSVC1.startmode}
-    write-host "===================="
-
-# Xbox Game
-    $xbSVC2 = Get-Service XblGameSave -ErrorAction SilentlyContinue
-    $xbSVC2mode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='XblGameSave'"
-
-    If ($xbSVC2.status -eq 'Stopped')
-        {write-host -ForegroundColor Green "XblGameSave service is not running."}
-    If ($xbSVC2.status -ne 'Stopped') 
-        {write-host -ForegroundColor Yellow "XblGameSave service is not stopped. Service status is: " -NoNewLine; write-host -f cyan $xbSVC2.status}
-    If (!($xbSVC2))
-        {write-host -ForegroundColor Green "XblGameSave service does not exist."}
-    If ($xbSVC2mode.startmode)
-        {write-host -ForegroundColor Green "XblGameSave service start mode: " -NoNewLine; write-host -f Cyan $xbSVC2.startmode}
-    write-host "===================="
-
-
-# Windows Update Service
-    $WUAUSVC = Get-Service wuauserv -ErrorAction SilentlyContinue
-    $WUAUMode = Get-WmiObject -Class Win32_Service -Property StartMode -Filter "Name='wuauserv'"
-
-    If ($WUAUSVC.status -eq 'running')
-        {write-host -ForegroundColor Green "Windows Update service is running."}
-    If ($WUAUSVC.status -ne 'running') 
-        {write-host -ForegroundColor Yellow "Windows Update service is not running. Service status is: " -NoNewLine; write-host -f cyan $BrowserSVC.status}
-    If (!(!($WUAUSVC)))
-        {write-host -ForegroundColor Green "Windows Update service exists."}
-    If ($WUAUMode.startmode)
-        {write-host -ForegroundColor Green "Windows Update service start mode: " -NoNewLine; write-host -f Cyan $WUAUMode.startmode}
-    write-host "===================="
-        }
 
 # Shutdown tracker
     $EvtTrackerKey = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Reliability"
@@ -429,7 +549,7 @@ write-host "=== Service Configuration Check ===="
         {write-host -ForegroundColor Green "Event Tracker Disabled"}
     If ($ReasonUICode.ShutdownReasonUI -ne 0 -or (!($ReasonUICode)))
         {write-host -f Red "Shutdown tracker not disabled"}
-
+    }
 function byebye
     {
         Clear-Host
@@ -506,15 +626,25 @@ Switch( $menuChoice )
 	        Clear page file at shutdown`
 	        Enable RDP and Network Level Authentication`
             Windows Update Service (required for altiris)`
+            Set LM Hash compatibility`
         Stop and disable the following services:`
 	        Print Spooler`
 	        Windows Audio`
 	        Network Computer Browser`
+            WPAD`
+            SMBv1`
+            NetBIOS`
+            WINS`
+            IPv6`
         Disable the following settings:`
             IE ESC for admins`
 	        Drive indexing on C`
 	        RDP Printer mapping`
 	        Shutdown Event Tracker`
+            Sidechannel vulnerabilities`
+            mitigate CVE-2017-8529`
+            require SMB signatures`
+            restrict anonymous enumeration`
             "
         $value = read-host "Do you want to continue? (Y/N)"
         Switch ($value)
